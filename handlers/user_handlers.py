@@ -18,6 +18,9 @@ class FSMFillForm(StatesGroup):
     # upload_photo = State()     # Состояние ожидания загрузки фото
     fill_desc = State()  # Состояние ожидания ввода описания
     fill_down_topic = State()  # Состояние ожидания ввода подтемы
+    faq = State()  # Состояние вывода faq
+    fill_request = State()  # Состояние составления запроса в поддержку
+    send_request = State()  # Состояние отправки запроса
 
 
 # Этот хэндлер будет срабатывать на команду /start вне состояний
@@ -33,7 +36,7 @@ async def process_fillform_command(message: Message, state: FSMContext):
 async def process_name_sent(message: Message, state: FSMContext):
     # await state.update_data(name=message.text) - проверку на имя надо
     await message.answer(text='Спасибо!\n\nА теперь введите ваш пароль')
-    # Устанавливаем состояние ожидания ввода возраста
+    # Устанавливаем состояние ожидания ввода пароля
     await state.set_state(FSMFillForm.fill_topic)
 
 
@@ -83,3 +86,17 @@ async def process_age_sent(message: Message, state: FSMContext):  # назван
     )
     # Устанавливаем состояние ожидания выбора темы
     await state.set_state(FSMFillForm.fill_topic)
+
+# @router.message(StateFilter(FSMFillForm.faq))
+# async def process_name_sent(message: Message, state: FSMContext):
+#     await message.answer() тут выводим faq по выбранной подтеме
+# И добавляем кнопки: вопрос решён и создать запрос в поддержку(ставим состояние fill_request)
+
+# @router.message(StateFilter(FSMFillForm.fill_request))
+# async def process_name_sent(message: Message, state: FSMContext):
+#     await message.answer() задаём вопросы по шаблону
+# 2 кнопки: отменить запрос и отправить(ставим состояние send_request)
+
+# @router.message(StateFilter(FSMFillForm.send_request))
+# async def process_name_sent(message: Message, state: FSMContext):
+#     отправляем запрос и заканчиваем сессию
