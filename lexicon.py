@@ -4,3 +4,22 @@ LEXICON: dict[str, str] = {
     'photo': 'WIP',
     'request': 'Введите запрос'
 }
+TOPICS: dict[str, dict[str, str]] = {
+    'computer': {
+        'software',
+        'internet',
+        'antivirus',
+        'periphery',
+        'breaking'
+    },
+    'printer':{
+        'drivers',
+        'breaking',
+        'other'
+    },
+    'projector':{
+        'diagnostic',
+        'other'
+    },
+    'other':{'other'}
+}
