@@ -1,13 +1,15 @@
 from aiogram import Router, F
 from aiogram.fsm import state
-from lexicon import LEXICON
+from lexicon import LEXICON, TOPICS
+from users import USERS
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state, State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
 from aiogram.types import (CallbackQuery, InlineKeyboardButton,
-                           InlineKeyboardMarkup, Message, PhotoSize)
+                           InlineKeyboardMarkup, Message, PhotoSize, KeyboardButton)
 
 router = Router()
 
@@ -29,74 +31,62 @@ class FSMFillForm(StatesGroup):
 # и предлагать перейти к заполнению анкеты, отправив команду /fill_login
 @router.message(Command(commands='start'), StateFilter(default_state))
 async def process_fillform_command(message: Message, state: FSMContext):
-    await message.answer(text='Пожалуйста, введите ваш логин')
-    # Устанавливаем состояние ожидания ввода имени
-    await state.set_state(FSMFillForm.fill_login)
+    if message.from_user.id not in USERS:
+        await message.answer(text='Вы не зарегистрированы в системе')
+    else:
+        if USERS[message.from_user.id]['log_in']:
+            # Переходим к выбору тем
+            await state.set_state(FSMFillForm.fill_topic)
+            await topic_selection(message, state)
+        else:
+            await message.answer(text='Пожалуйста, введите ваш логин')
+            # Устанавливаем состояние ожидания ввода имени
+            await state.set_state(FSMFillForm.fill_login)
 
+#Срабатывает при выходе из сессии, т.е. из аккаунта
+@router.message(Command(commands='exit'))
+async def log_out(message: Message, state: FSMContext):
+    USERS[message.from_user.id]['log_in'] = False
+    await message.answer(text=LEXICON['/exit'])
+    await state.clear()
 
 @router.message(StateFilter(FSMFillForm.fill_login), F.text.isalpha())
-async def process_name_sent(message: Message, state: FSMContext):
-    # await state.update_data(name=message.text) - проверку на имя надо
-    await message.answer(text='Спасибо!\n\nА теперь введите ваш пароль')
-    # Устанавливаем состояние ожидания ввода пароля
-    await state.set_state(FSMFillForm.fill_password)
+async def process_login_sent(message: Message, state: FSMContext):
+    if USERS[message.from_user.id]['login'] != message.text:
+        await message.answer(text='Такого пользователя не существует\nПопробуйте ещё раз')
+    else:
+        await message.answer(text='Спасибо!\nА теперь введите ваш пароль')
+        # Устанавливаем состояние ожидания ввода пароля
+        await state.set_state(FSMFillForm.fill_password)
 
-
-# Этот хэндлер будет срабатывать, если во время ввода имени
-# будет введено что-то некорректное
-
-
-@router.message(StateFilter(FSMFillForm.fill_password))  # придумай как проверить что пароль от заданного логина
-# async def warning_not_name(message: Message):  # название функции придумай подходящее
-#    await message.answer(
-#        text='Данные, введенные вами некорректны\n\n'
-#             'Пожалуйста, перепроверьте, и введите новые данные\n\n'  # хуйня текст
-#             'Если вы хотите прервать заполнение анкеты - '
-#             'отправьте команду /cancel'
-#    )
-async def good_name(message: Message, state: FSMContext):
-    await message.answer(
-        text='Данные, введенные вами корректны\n\n'
-             'Пожалуйста, выберите тему проблемы'
-    )
-    await state.set_state(FSMFillForm.fill_topic)
-
-# Этот хэндлер будет срабатывать, если введены кооректные данные
-# и переводить в состояние выбора темы
-
+@router.message(StateFilter(FSMFillForm.fill_password))
+async def process_fill_password(message: Message, state: FSMContext):
+    if USERS[message.from_user.id]['password'] != message.text:
+        await message.answer(
+            text='Неверный пароль\n'
+                'Введите пароль снова\n'
+                'Если вы хотите прервать заполнение анкеты - '
+                'отправьте команду /cancel'
+       )
+    else:
+        USERS[message.from_user.id]['log_in'] = True
+        #переходим к следующему состоянию
+        await state.set_state(FSMFillForm.fill_topic)
+        await topic_selection(message, state)
 
 @router.message(StateFilter(FSMFillForm.fill_topic))
-async def process_age_sent(message: Message, state: FSMContext):  # название функции меняй
-    # Cохраняем возраст в хранилище по ключу "topic" - добавь в лексикон
-    await state.update_topic(topic=message.text)
-    # Создаем объекты инлайн-кнопок
-    printer_button = InlineKeyboardButton(
-        text='Принтер',
-        callback_data='printer'
-    )
-    pc_button = InlineKeyboardButton(
-        text='Компьтер',
-        callback_data='pc'
-    )
-    # остальное надо как то распределить
-    undefined_button = InlineKeyboardButton(
-        text='Пока не ясно',
-        callback_data='undefined_topic'
-    )
-    # Добавляем кнопки в клавиатуру (две в одном ряду и одну в другом)
-    keyboard: list[list[InlineKeyboardButton]] = [
-        [printer_button, pc_button],
-        [undefined_button]
-    ]
-    # Создаем объект инлайн-клавиатуры
-    markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
-    # Отправляем пользователю сообщение с клавиатурой
+async def topic_selection(message: Message, state: FSMContext):
+    kb_builder = InlineKeyboardBuilder()  # создаем билдер
+    buttons: list[InlineKeyboardButton] = [
+        InlineKeyboardButton(text=topic, callback_data=topic) for topic in TOPICS.keys()]  # создаем список кнопок
+    kb_builder.row(*buttons, width=2)  # добавляем кнопки в билдер
+    # Отправляем пользователю сообщение с кнопками
     await message.answer(
-        text='Здравствуйте!\n\nУкажите тему неполадки',
-        reply_markup=markup
+        text='Укажите тему неполадки',
+        reply_markup=kb_builder.as_markup(resize_keyboard=True)
     )
     # Устанавливаем состояние ожидания выбора темы
-    await state.set_state(FSMFillForm.fill_topic)
+    await state.set_state(FSMFillForm.fill_down_topic)
 
     # @router.message(StateFilter(FSMFillForm.faq))
     # async def process_name_sent(message: Message, state: FSMContext):

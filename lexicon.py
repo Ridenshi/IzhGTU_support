@@ -1,25 +1,25 @@
 LEXICON: dict[str, str] = {
     '/start': 'Здраствуйте!\nЧем я могу вам помочь?',
     '/help': 'WIP',
-    'photo': 'WIP',
+    '/exit': 'Вы вышли из сессии',
     'request': 'Введите запрос'
 }
 TOPICS: dict[str, dict[str, str]] = {
-    'computer': {
+    'Компьютер': {
         'software',
         'internet',
         'antivirus',
         'periphery',
         'breaking'
     },
-    'printer':{
+    'Принтер':{
         'drivers',
         'breaking',
         'other'
     },
-    'projector':{
+    'Проектор':{
         'diagnostic',
         'other'
     },
-    'other':{'other'}
+    'Другое':{'other'}
 }
