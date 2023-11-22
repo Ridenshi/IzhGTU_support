@@ -4,7 +4,10 @@ LEXICON: dict[str, str] = {
     '/exit': 'Вы вышли из сессии',
     'request': 'Введите запрос'
 }
-TOPICS: dict[str, dict[str, str]] = {
+TOPICS = {
+    'Компьютер','Принтер','Проектор','Другое'
+}
+DOWN_TOPICS = {
     'Компьютер': {
         'software',
         'internet',
@@ -12,14 +15,14 @@ TOPICS: dict[str, dict[str, str]] = {
         'periphery',
         'breaking'
     },
-    'Принтер':{
+    'Принтер': {
         'drivers',
         'breaking',
         'other'
     },
-    'Проектор':{
+    'Проектор': {
         'diagnostic',
         'other'
     },
-    'Другое':{'other'}
+    'Другое': {'other'}
 }
