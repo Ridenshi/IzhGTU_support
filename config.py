@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from environs import Env
 
+
 @dataclass
 class DatabaseConfig:
     database: str  # Название базы данных
@@ -20,8 +21,8 @@ class Config:
     tg_bot: TgBot
     db: DatabaseConfig
 
-def load_config(path: str | None) -> Config:
 
+def load_config(path: str | None) -> Config:
     env: Env = Env()
     env.read_env(path)
 

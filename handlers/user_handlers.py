@@ -14,7 +14,8 @@ from aiogram.types import (CallbackQuery, InlineKeyboardButton,
 
 router = Router()
 
-#TODO кнопки располагаются в произвольном порядке, пересмотреть имеющиеся состояния
+
+# TODO кнопки располагаются в произвольном порядке, пересмотреть имеющиеся состояния
 
 class FSMFillForm(StatesGroup):
     fill_login = State()  # Состояние ожидания ввода логина
@@ -45,12 +46,14 @@ async def process_fillform_command(message: Message, state: FSMContext):
             # Устанавливаем состояние ожидания ввода имени
             await state.set_state(FSMFillForm.fill_login)
 
-#Срабатывает при выходе из сессии, т.е. из аккаунта
+
+# Срабатывает при выходе из сессии, т.е. из аккаунта
 @router.message(Command(commands='exit'))
 async def log_out(message: Message, state: FSMContext):
     USERS[message.from_user.id]['log_in'] = False
     await message.answer(text=LEXICON['/exit'])
     await state.clear()
+
 
 @router.message(StateFilter(FSMFillForm.fill_login))
 async def process_login_sent(message: Message, state: FSMContext):
@@ -61,20 +64,22 @@ async def process_login_sent(message: Message, state: FSMContext):
         # Устанавливаем состояние ожидания ввода пароля
         await state.set_state(FSMFillForm.fill_password)
 
+
 @router.message(StateFilter(FSMFillForm.fill_password))
 async def process_fill_password(message: Message, state: FSMContext):
     if USERS[message.from_user.id]['password'] != message.text:
         await message.answer(
             text='Неверный пароль\n'
-                'Введите пароль снова\n'
-                'Если вы хотите прервать заполнение анкеты - '
-                'отправьте команду /cancel'
-       )
+                 'Введите пароль снова\n'
+                 'Если вы хотите прервать заполнение анкеты - '
+                 'отправьте команду /cancel'
+        )
     else:
         USERS[message.from_user.id]['log_in'] = True
-        #переходим к следующему состоянию
+        # переходим к следующему состоянию
         await state.set_state(FSMFillForm.fill_topic)
         await topic_selection(message, state)
+
 
 @router.message(StateFilter(FSMFillForm.fill_topic))
 async def topic_selection(message: Message, state: FSMContext):
@@ -92,7 +97,8 @@ async def topic_selection(message: Message, state: FSMContext):
 async def down_topic_selection(callback: CallbackQuery, state: FSMContext):
     kb_builder = InlineKeyboardBuilder()  # создаем билдер
     data = await state.get_data()
-    buttons = [InlineKeyboardButton(text=topic, callback_data=topic) for topic in DOWN_TOPICS[data['topic']]]  # создаем список кнопок
+    buttons = [InlineKeyboardButton(text=topic, callback_data=topic) for topic in
+               DOWN_TOPICS[data['topic']]]  # создаем список кнопок
     kb_builder.row(*buttons, width=2)  # добавляем кнопки в билдер
     # Отправляем пользователю сообщение с кнопками
     await callback.message.answer(
@@ -100,7 +106,8 @@ async def down_topic_selection(callback: CallbackQuery, state: FSMContext):
         reply_markup=kb_builder.as_markup()
     )
     # Устанавливаем состояние ожидания выбора подтемы
-    #await state.set_state(FSMFillForm.faq)
+    # await state.set_state(FSMFillForm.faq)
+
 
 # отвечает на нажатие любой кнопки
 @router.callback_query()
@@ -113,17 +120,16 @@ async def catch_callback_data(callback: CallbackQuery, state: FSMContext):
     elif await state.get_state() == FSMFillForm.faq:
         await state.update_data(down_topic=callback.data)
 
+# @router.message(StateFilter(FSMFillForm.faq))
+# async def process_name_sent(message: Message, state: FSMContext):
+#     await message.answer() тут выводим faq по выбранной подтеме
+# И добавляем кнопки: вопрос решён и создать запрос в поддержку(ставим состояние fill_request)
 
-    # @router.message(StateFilter(FSMFillForm.faq))
-    # async def process_name_sent(message: Message, state: FSMContext):
-    #     await message.answer() тут выводим faq по выбранной подтеме
-    # И добавляем кнопки: вопрос решён и создать запрос в поддержку(ставим состояние fill_request)
+# @router.message(StateFilter(FSMFillForm.fill_request))
+# async def process_name_sent(message: Message, state: FSMContext):
+#     await message.answer() задаём вопросы по шаблону
+# 2 кнопки: отменить запрос и отправить(ставим состояние send_request)
 
-    # @router.message(StateFilter(FSMFillForm.fill_request))
-    # async def process_name_sent(message: Message, state: FSMContext):
-    #     await message.answer() задаём вопросы по шаблону
-    # 2 кнопки: отменить запрос и отправить(ставим состояние send_request)
-
-    # @router.message(StateFilter(FSMFillForm.send_request))
-    # async def process_name_sent(message: Message, state: FSMContext):
-    # отправляем запрос и заканчиваем сессию
+# @router.message(StateFilter(FSMFillForm.send_request))
+# async def process_name_sent(message: Message, state: FSMContext):
+# отправляем запрос и заканчиваем сессию
