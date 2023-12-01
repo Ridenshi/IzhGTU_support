@@ -7,7 +7,7 @@ from handlers import admin_handlers, user_handlers
 
 async def main() -> None:
     config = load_config(None)
-    bot = Bot(token = config.tg_bot.token)
+    bot = Bot(token=config.tg_bot.token)
     storage = MemoryStorage()
     dp = Dispatcher(storage=storage)
 

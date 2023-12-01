@@ -4,4 +4,4 @@ from aiogram.types import Message
 from lexicon import LEXICON
 
 router = Router()
-#добавление юзера и админа
+# добавление юзера и админа
