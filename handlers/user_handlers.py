@@ -147,7 +147,7 @@ async def process_faq_sent(state: FSMContext, callback: CallbackQuery):
         mess = FAQ[data['down_down_topic']][x: x + 4096]
         await callback.message.answer(text=mess)
     await callback.message.answer(
-        text='Это помогло справиться с вашей проблемой?\nЕсли нет, то подтвердите отправление запроса',
+        text='Это помогло справиться с вашей проблемой?\n',
         reply_markup=kb_builder.as_markup()
     )
     await state.set_state(FSMFillForm.fill_request)
@@ -155,11 +155,15 @@ async def process_faq_sent(state: FSMContext, callback: CallbackQuery):
 #@router.message(StateFilter(FSMFillForm.fill_request))
 async def process_fill_request(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
-    if data['confirmation']=='Отправить':
-        await callback.message.answer('Запрос отправлен, ожидайте')
+    if data['confirmation']=='Нет':
+        await callback.message.answer('Опишите подробно проблему (при каких обстоятельствах обнаружена проблема, инвентарный код и т.д.)\nНапишите ответ одним сообщением')
+        await state.set_state(FSMFillForm.send_request)
     else:
-        await callback.message.answer('Запрос отменён')#
+        await callback.message.answer('Запрос отменён\nЧтобы написать новый запрос введите команду /start')
         await state.set_state(default_state)
-    # @router.message(StateFilter(FSMFillForm.send_request))
-    # async def process_name_sent(message: Message, state: FSMContext):
-    # отправляем запрос и заканчиваем сессию
+
+@router.message(StateFilter(FSMFillForm.send_request))
+async def process_send_request(message: Message, state: FSMContext):
+    await state.update_data(description=message.text)
+    await message.answer(text='Запрос отправлен\nЧтобы написать новый запрос введите команду /start')
+    await state.set_state(default_state)
