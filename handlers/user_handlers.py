@@ -1,169 +1,114 @@
 from aiogram import Router, F
 from aiogram.filters.callback_data import CallbackData
 from aiogram.fsm import state
+import keyboards
 from lexicon import LEXICON, TOPICS, DOWN_TOPICS, DOWN_DOWN_TOPICS, FAQ, YesNo
-from users import USERS
+from users import USERS, ADMINS
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command, CommandStart, StateFilter
+from states import FSMUserRegTypes, FSMAdminStates, FSMUserStates
+from aiogram.fsm.state import default_state
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import default_state, State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.utils.keyboard import ReplyKeyboardBuilder, InlineKeyboardBuilder
 from aiogram.types import (CallbackQuery, InlineKeyboardButton,
                            InlineKeyboardMarkup, Message, PhotoSize, KeyboardButton)
-
+from admin_handlers import admin_panel_init
 router = Router()
 
-#TODO кнопки располагаются в произвольном порядке, пересмотреть имеющиеся состояния
 
-class FSMFillForm(StatesGroup):
-    fill_login = State()  # Состояние ожидания ввода логина
-    fill_password = State()  # Состояние ожидания ввода пароля
-    fill_topic = State()  # Состояние ожидания выбора темы косяка
-    fill_over_topic = State()  # состояние ожидание ввода иной темы косяка
-    # upload_photo = State()     # Состояние ожидания загрузки фото
-    fill_desc = State()  # Состояние ожидания ввода описания
-    down_topic_selection = State()  # Состояние ожидания ввода подтемы
-    down_down_topic_selection = State()  # Состояние ожидания ввода подтемы
-    faq = State()  # Состояние вывода faq
-    fill_request = State()  # Состояние составления запроса в поддержку
-    send_request = State()  # Состояние отправки запроса
-    faq_select = State()
-
-# Этот хэндлер будет срабатывать на команду /start вне состояний
-# и предлагать перейти к заполнению анкеты, отправив команду /fill_login
-@router.message(Command(commands='start'), StateFilter(default_state))
+# Этот хэндлер будет срабатывать на команду /start в стандартном состоянии
+@router.message(Command(commands='start'))
 async def process_fillform_command(message: Message, state: FSMContext):
     await state.clear()
-    if message.from_user.id not in USERS:
-        await message.answer(text='Вы не зарегистрированы в системе')
+    if message.from_user.id in ADMINS:
+        # Если нужно добавить авторизацию для сотр.
+        await message.answer(text='Вы авторизованы, как сотрудник технической поддерки')
+        await state.set_state(FSMAdminStates.admin_default)
+        await admin_panel_init()
     else:
-        if USERS[message.from_user.id]['log_in']:
-            # Переходим к выбору тем
-            await state.set_state(FSMFillForm.fill_topic)
-            await topic_selection(message, state)
+        if message.from_user.id not in USERS:
+            await user_register(message, state)
         else:
-            await message.answer(text='Пожалуйста, введите ваш логин')
-            # Устанавливаем состояние ожидания ввода имени
-            await state.set_state(FSMFillForm.fill_login)
+            # Если нужно добавить авторизацию для препод.
+            await message.answer(text='Вы авторизованы, как преподаватель')
+            await state.set_state(FSMUserStates.user_default)
+            await user_panel_init(message)
 
-#Срабатывает при выходе из сессии, т.е. из аккаунта
-@router.message(Command(commands='exit'))
-async def log_out(message: Message, state: FSMContext):
-    USERS[message.from_user.id]['log_in'] = False
-    await message.answer(text=LEXICON['/exit'])
-    await state.clear()
 
-@router.message(StateFilter(FSMFillForm.fill_login))
-async def process_login_sent(message: Message, state: FSMContext):
-    if USERS[message.from_user.id]['login'] != message.text:
-        await message.answer(text='Такого пользователя не существует\nПопробуйте ещё раз')
-    else:
-        await message.answer(text='Спасибо!\nА теперь введите ваш пароль')
-        # Устанавливаем состояние ожидания ввода пароля
-        await state.set_state(FSMFillForm.fill_password)
+# Регистрация новых пользователей
+async def user_register(message: Message, state: FSMContext):
+    await message.answer(text='Вы не зарегистрированы в системе\n\nЖелаете начать регистрацию сейчас?')
+    # TODO Добавить продолжение регистрации
+    # Либо добавить условных преподов и поддержку в users,
+    # либо дать им общий пароль для регистрации именно как преподавателей/сотрудников
 
-@router.message(StateFilter(FSMFillForm.fill_password))
-async def process_fill_password(message: Message, state: FSMContext):
-    if USERS[message.from_user.id]['password'] != message.text:
-        await message.answer(
-            text='Неверный пароль\n'
-                'Введите пароль снова\n'
-                'Если вы хотите прервать заполнение анкеты - '
-                'отправьте команду /cancel'
-       )
-    else:
-        USERS[message.from_user.id]['log_in'] = True
-        #переходим к следующему состоянию
-        #await state.set_state(FSMFillForm.fill_topic)
-        await topic_selection(message, state)
 
-@router.message(StateFilter(FSMFillForm.fill_topic))
-async def topic_selection(message: Message, state: FSMContext):
+async def user_panel_init(message: Message):
+    await message.answer('Используйте кнопки для навигации или напишите задачу текстом', reply_markup=keyboards.user_kb)
+
+
+# Переделать чтобы реагировал только на Создать заявку
+@router.message(F.text.lower() == "создать заявку",
+                StateFilter(FSMUserStates.user_default))
+async def user_request_start(message: Message, state: FSMContext):
     kb_builder = InlineKeyboardBuilder()  # создаем билдер
     buttons = [InlineKeyboardButton(text=topic, callback_data=topic) for topic in TOPICS]  # создаем список кнопок
     kb_builder.row(*buttons, width=2)  # добавляем кнопки в билдер
     # Отправляем пользователю сообщение с кнопками
     await message.answer(
-        text='Укажите тему неполадки',
+        text='Выберите тему неполадки\n\nЕсли темы ниже не подходят введите тему вашей проблемы текстом',
         reply_markup=kb_builder.as_markup()
     )
+    await state.set_state(FSMUserStates.choose_topic)
 
 
-#@router.callback_query(StateFilter(FSMFillForm.down_topic_selection))
-async def down_topic_selection(callback: CallbackQuery, state: FSMContext):
+@router.message(F.text.lower() == "мои заявки",
+                StateFilter(FSMUserStates.user_default))
+async def user_request_start(message: Message, state: FSMContext):
+    ...
+
+
+@router.message(F.text.lower() == "Настройки аккаунта",
+                StateFilter(FSMUserStates.user_default))
+async def user_request_start(message: Message, state: FSMContext):
+    ...
+
+
+async def user_request_down_topics(callback: CallbackQuery, state: FSMContext):
     kb_builder = InlineKeyboardBuilder()  # создаем билдер
     data = await state.get_data()
-    buttons = [InlineKeyboardButton(text=topic, callback_data=topic) for topic in DOWN_TOPICS[data['topic']]]  # создаем список кнопок
+    buttons = [InlineKeyboardButton(text=topic, callback_data=topic) for topic in
+               DOWN_TOPICS[data['topic']]]  # создаем список кнопок
     kb_builder.row(*buttons, width=2)  # добавляем кнопки в билдер
     # Отправляем пользователю сообщение с кнопками
     await callback.message.answer(
-        text='Укажите подтему неполадки',
+        text='Выберите подтему неполадки',
         reply_markup=kb_builder.as_markup()
     )
-    # Устанавливаем состояние ожидания выбора подтемы
-    await state.set_state(FSMFillForm.down_down_topic_selection)
 
-# отвечает на нажатие любой кнопки
+
+@router.message(StateFilter(FSMUserStates.fill_context))
+async def context_filling(message: Message, state: FSMContext):
+    await send_request(message, state)
+
+
+async def send_request(message: Message, state: FSMContext):
+    await state.update_data(description=message.text)
+    await message.answer(text='Запрос отправлен\nЧтобы написать новый запрос используйте кнопку Создать запрос')
+    await state.set_state(FSMUserStates.user_default)
+
+
+# Реагирует на нажатие кнопок тем
 @router.callback_query()
 async def catch_callback_data(callback: CallbackQuery, state: FSMContext):
     # запись инфы о темах и переход в следующее состояние/функцию
-    if await state.get_state() == FSMFillForm.fill_topic:
+    if await state.get_state() == FSMUserStates.choose_topic:
         await state.update_data(topic=callback.data)
-        await state.set_state(FSMFillForm.down_topic_selection)
-        await down_topic_selection(callback, state)
-    elif await state.get_state() == FSMFillForm.down_down_topic_selection:
-        await state.update_data(down_topic=callback.data)
-        await down_down_selection(callback=callback, state=state)
-    elif await state.get_state() == FSMFillForm.fill_request:
-        await state.update_data(confirmation=callback.data)
-        await process_fill_request(callback, state)
+        await state.set_state(FSMUserStates.choose_down_topic)
+        await user_request_down_topics(callback, state)
+    elif await state.get_state() == FSMUserStates.choose_down_topic:
+        await state.set_state(FSMUserStates.fill_context)
+        await callback.message.answer(text='Опишите подробно проблему (при каких обстоятельствах обнаружена проблема, '
+                                           'инвентарный код и т.д.)\nНапишите ответ одним сообщением')
 
-
-async def down_down_selection(state: FSMContext, callback: CallbackQuery):
-    kb_builder = InlineKeyboardBuilder()  # создаем билдер
-    data = await state.get_data()
-    if(data['down_topic'] in DOWN_DOWN_TOPICS):
-        # buttons = [InlineKeyboardButton(text=topic, callback_data=topic) for topic in
-        #            DOWN_TOPICS[data['topic']]]  # создаем список кнопок
-        # kb_builder.row(*buttons, width=2)  # добавляем кнопки в билдер
-        # # Отправляем пользователю сообщение с кнопками
-        await callback.answer(
-            text='Укажите подтему неполадки',
-            reply_markup=kb_builder.as_markup()
-        )
-    else:
-        await state.set_state(FSMFillForm.faq)
-        await state.update_data(down_down_topic=data['down_topic'])
-        await process_faq_sent(state=state, callback=callback)
-
-@router.message(StateFilter(FSMFillForm.faq))
-async def process_faq_sent(state: FSMContext, callback: CallbackQuery):
-    data = await state.get_data()
-    kb_builder = InlineKeyboardBuilder()  # создаем билдер
-    buttons = [InlineKeyboardButton(text=topic, callback_data=topic) for topic in YesNo]  # создаем список кнопок
-    kb_builder.row(*buttons, width=2)  # добавляем кнопки в билдер
-    for x in range(0, len(FAQ[data['down_down_topic']]), 4096):
-        mess = FAQ[data['down_down_topic']][x: x + 4096]
-        await callback.message.answer(text=mess)
-    await callback.message.answer(
-        text='Это помогло справиться с вашей проблемой?\n',
-        reply_markup=kb_builder.as_markup()
-    )
-    await state.set_state(FSMFillForm.fill_request)
-
-#@router.message(StateFilter(FSMFillForm.fill_request))
-async def process_fill_request(callback: CallbackQuery, state: FSMContext):
-    data = await state.get_data()
-    if data['confirmation']=='Нет':
-        await callback.message.answer('Опишите подробно проблему (при каких обстоятельствах обнаружена проблема, инвентарный код и т.д.)\nНапишите ответ одним сообщением')
-        await state.set_state(FSMFillForm.send_request)
-    else:
-        await callback.message.answer('Запрос отменён\nЧтобы написать новый запрос введите команду /start')
-        await state.set_state(default_state)
-
-@router.message(StateFilter(FSMFillForm.send_request))
-async def process_send_request(message: Message, state: FSMContext):
-    await state.update_data(description=message.text)
-    await message.answer(text='Запрос отправлен\nЧтобы написать новый запрос введите команду /start')
-    await state.set_state(default_state)
