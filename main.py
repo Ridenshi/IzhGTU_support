@@ -2,7 +2,7 @@ import asyncio
 from aiogram import Bot, Dispatcher, types
 from aiogram.fsm.storage.memory import MemoryStorage
 from config import load_config
-from handlers import admin_handlers, user_handlers
+from handlers import admin_handlers, user_handlers, guest_handlers
 
 
 async def main() -> None:
@@ -13,6 +13,7 @@ async def main() -> None:
     dp = Dispatcher(storage=storage)
 
     # Подключение роутеров для разных целей
+    dp.include_router(guest_handlers.router)
     dp.include_router(admin_handlers.router)
     dp.include_router(user_handlers.router)
 

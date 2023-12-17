@@ -4,10 +4,10 @@ from environs import Env
 
 @dataclass
 class DatabaseConfig:
-    database: str  # Название базы данных
-    db_host: str  # URL-адрес базы данных
-    db_user: str  # Username пользователя базы данных
-    db_password: str  # Пароль к базе данных
+    db_CREDENTIALS_USERS: str
+    db_CREDENTIALS_ADMINS: str
+    db_PASSWORDS: str
+    db_REQUESTS: str
 
 
 @dataclass
@@ -32,9 +32,9 @@ def load_config(path: str | None) -> Config:
             admin_ids=list(map(int, env.list('ADMIN_IDS')))
         ),
         db=DatabaseConfig(
-            database=env('DATABASE'),
-            db_host=env('DB_HOST'),
-            db_user=env('DB_USER'),
-            db_password=env('DB_PASSWORD')
+            db_CREDENTIALS_USERS=env('CREDENTIALS_USERS'),
+            db_CREDENTIALS_ADMINS=env('CREDENTIALS_ADMINS'),
+            db_PASSWORDS = env('PASSWORDS'),
+            db_REQUESTS = env('REQUESTS')
         )
     )

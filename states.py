@@ -15,8 +15,11 @@ class FSMUserStates(StatesGroup):
     choose_down_topic = State()
     fill_context = State()
 
+class FSMGuestStates(StatesGroup):
+    guest_default = State()
+    password = State()
 
-# Твои состояния, Женя. Я подумал стоит немного переделать
+# Твои состояния, Женя. Я подумал стоит немного переделать// стирай их нафиг
 class FSMRidenshi(StatesGroup):
     fill_login = State()  # Состояние ожидания ввода логина
     fill_password = State()  # Состояние ожидания ввода пароля

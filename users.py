@@ -2,7 +2,9 @@
 # Зарегестрированные пользователи
 USERS = {
     1550392796: {
-        'full name': 'Ф И О1'
+        'login': 'admin',
+        'password': 'admin',
+        'log_in': True
     },
     982032793: {
         'full name': 'Ф И О2'
