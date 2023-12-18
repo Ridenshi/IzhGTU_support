@@ -14,7 +14,7 @@ class FSMUserStates(StatesGroup):
     choose_topic = State()
     choose_down_topic = State()
     fill_context = State()
-
+    fill_name = State()
 
 class FSMGuestStates(StatesGroup):
     guest_default = State()

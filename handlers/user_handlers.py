@@ -73,7 +73,15 @@ async def user_request_start(message: Message, state: FSMContext):
 @router.message(F.text.lower() == "изменить имя",
                 StateFilter(FSMUserStates.user_default))
 async def user_request_start(message: Message, state: FSMContext):
+    await state.set_state(FSMUserStates.fill_name)
+    await message.answer("Введите своё полное имя одним сообщением")
+
+
+@router.message(StateFilter(FSMUserStates.fill_name))
+async def user_request_start(message: Message, state: FSMContext):
+    # TODO изменить имя пользователя, на имя из сообщения
     ...
+    await state.set_state(FSMUserStates.user_default)
 
 
 @router.message(StateFilter(FSMFillForm.send_request))
