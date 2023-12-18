@@ -23,26 +23,24 @@ async def admin_panel_init(message: Message):
 
 @router.message(Command(commands='start'))
 async def guess_check(message: Message, state: FSMContext):
-    await state.clear()
+    # await state.clear()
     credentials_users = load_JSON(config.db.db_CREDENTIALS_USERS)
     credentials_admins = load_JSON(config.db.db_CREDENTIALS_ADMINS)
     if str(message.from_user.id) not in credentials_users or not credentials_users[str(message.from_user.id)].get(
             'state'):
         await message.answer(text='Здраствуйте, для начала работы введите ваш пароль')
         await state.set_state(FSMGuestStates.password)
-    elif str(message.from_user.id) not in credentials_admins:
-        cur = load_JSON(config.db.db_CREDENTIALS_USERS)
-        await message.answer(
-            f'Здраствуйте, {cur[str(message.from_user.id)].get("name")}\nВы авторизованы, как преподаватель')
-        await user_panel_init(message)
-        await state.set_state(FSMUserStates.user_default)
-    else:
-        cur = load_JSON(config.db.db_CREDENTIALS_ADMINS)
-        await message.answer(
-            f'Здраствуйте, {cur[str(message.from_user.id)].get("name")}\nВы авторизованы, как сотрудник технической '
-            f'поддерки')
-        await admin_panel_init(message)
-        await state.set_state(FSMAdminStates.admin_default)
+    elif str(message.from_user.id) not in credentials_admins or not credentials_admins[str(message.from_user.id)].get(
+            'state'):
+        await message.answer(text='Здраствуйте, для начала работы введите ваш пароль')
+        await state.set_state(FSMGuestStates.password)
+    # else:
+    #     cur = load_JSON(config.db.db_CREDENTIALS_ADMINS)
+    #     await message.answer(
+    #         f'Здраствуйте, {cur[str(message.from_user.id)].get("name")}\nВы авторизованы, как сотрудник технической '
+    #         f'поддерки')
+    #     await admin_panel_init(message)
+    #     await state.set_state(FSMAdminStates.admin_default)
 
 
 # @router.message(StateFilter(FSMGuestStates.login))
@@ -54,7 +52,9 @@ async def guess_check(message: Message, state: FSMContext):
 #         await message.answer(text='А теперь введите ваш пароль')
 #         await state.set_state(FSMGuestStates.password)
 
-
+@router.message(Command(commands='cancel'), StateFilter(FSMGuestStates))
+async def cancel(message: Message, state: FSMContext):
+    await state.set_state(FSMGuestStates.guest_default)
 @router.message(StateFilter(FSMGuestStates.password))
 async def process_fill_password(message: Message, state: FSMContext):
     if passwords['user'] == str(message.text):

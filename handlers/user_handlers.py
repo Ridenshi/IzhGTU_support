@@ -36,16 +36,17 @@ class FSMFillForm(StatesGroup):
 
 
 # Срабатывает при выходе
-@router.message(Command(commands='exit'))
+@router.message(Command(commands='exit'), StateFilter(FSMUserStates))
 async def log_out(message: Message, state: FSMContext):
     cur = load_JSON(config.db.db_CREDENTIALS_USERS)
-    if cur[str(message.from_user.id)]['state'] is True:
-        cur[str(message.from_user.id)]['state'] = False
-        save_JSON(cur, config.db.db_CREDENTIALS_USERS)
-        await message.answer(text=LEXICON['/exit'])
-        await state.clear()
+    cur[str(message.from_user.id)]['state'] = False
+    save_JSON(cur, config.db.db_CREDENTIALS_USERS)
+    await message.answer(text=LEXICON['/exit'])
+    await state.clear()
 
-
+@router.message(Command(commands='cancel'), StateFilter(FSMUserStates))
+async def cancel(message: Message, state: FSMContext):
+    await state.set_state(FSMUserStates.user_default)
 async def send_request(message: Message, state: FSMContext):
     await state.update_data(description=message.text)
     data = await state.get_data()
@@ -78,9 +79,11 @@ async def user_request_start(message: Message, state: FSMContext):
 
 
 @router.message(StateFilter(FSMUserStates.fill_name))
-async def user_request_start(message: Message, state: FSMContext):
-    # TODO изменить имя пользователя, на имя из сообщения
-    ...
+async def user_request_continue(message: Message, state: FSMContext):
+    cur = load_JSON(config.db.db_CREDENTIALS_USERS)
+    cur[str(message.from_user.id)]['name']=message.text
+    save_JSON(cur, config.db.db_CREDENTIALS_USERS)
+    await message.answer(f"Ваше имя изменено, теперь вы {message.text}")
     await state.set_state(FSMUserStates.user_default)
 
 

@@ -23,3 +23,6 @@ class FSMGuestStates(StatesGroup):
 
 class FSMAdminStates(StatesGroup):
     admin_default = State()  # Пользователь является сотрудником (администратором)
+    change_password_u = State()
+    change_password_a = State()
+

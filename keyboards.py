@@ -21,7 +21,8 @@ user_kb = ReplyKeyboardMarkup(
 admin_kb = ReplyKeyboardMarkup(
     keyboard=[
         [
-            KeyboardButton(text="Настроить пароль для преподавателей")
+            KeyboardButton(text="Настроить пароль для преподавателей"),
+            KeyboardButton(text="Настроить пароль для администраторов")
         ]
     ],
     resize_keyboard=True,
